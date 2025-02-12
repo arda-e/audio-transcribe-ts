@@ -1,0 +1,21 @@
+{
+  "name": "audio-processing",
+  "version": "1.0.0",
+  "description": "A TypeScript project for audio processing and speech recognition.",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.2.0",
+    "wavefile": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/node": "^22.13.1",
+    "@types/long": "^4.0.2"
+  }
+}
