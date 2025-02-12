@@ -1,6 +1,6 @@
-import wf from "wavefile";
+import { WaveFile } from 'wavefile';
 import { readFileSync } from "fs";
-import { IAudioProcessor } from "./types";
+import { IAudioProcessor } from "../types";
 
 /**
  * The `AudioProcessor` class is responsible for reading and processing audio files.
@@ -17,7 +17,7 @@ export class AudioProcessor implements IAudioProcessor {
   readAudioFile(): Float32Array {
     console.log(`Reading audio file: ${this.audioPath}`);
     const buffer: Buffer = readFileSync(this.audioPath);
-    const wav = new wf.WaveFile(buffer);
+    const wav = new WaveFile(buffer);
     wav.toBitDepth("32f"); // Convert to 32-bit floating point
     wav.toSampleRate(16000); // Resample to 16kHz
 

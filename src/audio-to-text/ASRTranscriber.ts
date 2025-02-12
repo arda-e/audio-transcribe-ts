@@ -3,7 +3,7 @@ import {
   AutomaticSpeechRecognitionPipeline,
   AutomaticSpeechRecognitionOutput,
 } from "@xenova/transformers";
-import { ITranscriber } from "./types";
+import { ITranscriber } from "../types";
 
 /**
  * The ASRTranscriber class uses the Xenova/whisper-tiny.en model by default to transcribe audio data.
