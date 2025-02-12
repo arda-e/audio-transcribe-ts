@@ -21,3 +21,11 @@ export interface IAudioProcessor {
      */
     readAudioFile(): Float32Array;
 }
+
+export interface ILogProcessor {
+    /**
+     * Writes the provided log data to the log file.
+     * @param logData - The log data to be written to the file.
+     */
+    processLog(logData: string): void;
+}
