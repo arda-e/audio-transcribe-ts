@@ -18,7 +18,7 @@ export interface IAudioProcessor {
    * Reads an audio file and returns the audio data as a Float32Array.
    * @returns The audio data as a Float32Array.
    */
-  readAudioFile(): Float32Array;
+  readAudioFile(): Promise<Float32Array>;
 }
 
 export interface ILogProcessor {

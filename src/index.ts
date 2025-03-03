@@ -1,7 +1,11 @@
+/**
+ * CLI entry point for the audio transcription tool.
+ * Parses command-line arguments and invokes the transcription process.
+ */
+
 import { Command } from 'commander';
-import { ASRTranscriber, AudioProcessor, LogProcessor } from "./audio-to-text";
-import { Benchmark } from "./utils/";
 import { join } from "path";
+import { transcribeAudio } from "./app";
 
 const DEFAULT_LOGS_DIR = join(process.cwd(), 'logs');
 
@@ -19,20 +23,10 @@ program.parse();
 const options = program.opts();
 
 (async () => {
-    const audioPath = options.audio;
-    const logsPath = options.logs;
-
-  console.log("Reading audio file:", audioPath);
-
-  const transcriber = new ASRTranscriber();
-  const processor = new AudioProcessor(audioPath);
-  const logProcessor = new LogProcessor(logsPath);
-
-  await transcriber.loadModel();
-  const audioData = processor.readAudioFile();
-
-  const output = await Benchmark.measureExecutionTime(() =>
-    transcriber.transcribe(audioData),
-  );
-  logProcessor.processLog(output.text);
+  try {
+    await transcribeAudio(options.audio, options.logs);
+  } catch (error) {
+    console.error("Error occurred during transcription:", error);
+    process.exit(1);
+  }
 })();
