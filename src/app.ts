@@ -11,35 +11,35 @@ import { Benchmark } from "./utils/";
  * @param logsPath - The directory path for storing log files
  */
 export async function transcribeAudio(audioPath: string, logsPath: string) {
-    console.log("Starting transcription process...");
-    console.log("Reading audio file:", audioPath);
+  console.log("Starting transcription process...");
+  console.log("Reading audio file:", audioPath);
 
-    try {
-        const transcriber = ASRTranscriber.create();
-        console.log("Initializing ASR model...");
-        await transcriber.loadModel();
+  try {
+    const transcriber = ASRTranscriber.create();
+    console.log("Initializing ASR model...");
+    await transcriber.loadModel();
 
-        const processor = AudioProcessor.create(audioPath);
-        const logProcessor = new LogProcessor(logsPath);
+    const processor = AudioProcessor.create(audioPath);
+    const logProcessor = new LogProcessor(logsPath);
 
+    console.log("Processing audio file...");
+    let audioData: Float32Array<ArrayBufferLike>;
+    await Benchmark.measureExecutionTime(
+      async () => (audioData = await processor.readAudioFile()),
+    );
 
+    console.log("Performing transcription...");
+    const output = await Benchmark.measureExecutionTime(
+      async () => await transcriber.transcribe(audioData),
+    );
 
-        console.log("Processing audio file...");
-        let audioData: Float32Array<ArrayBufferLike> = null;
-        await Benchmark.measureExecutionTime(async () => audioData = await processor.readAudioFile());
+    console.log("Transcription complete. Logging results...");
+    logProcessor.processLog(output.text);
 
-        console.log("Performing transcription...");
-        const output = await Benchmark.measureExecutionTime(
-            async () => await transcriber.transcribe(audioData)
-        );
-
-        console.log("Transcription complete. Logging results...");
-        logProcessor.processLog(output.text);
-
-        console.log("Transcription process completed successfully.");
-        process.exit(0);
-    } catch (error) {
-        console.error("Error occurred during transcription:", error);
-        throw error;
-    }
+    console.log("Transcription process completed successfully.");
+    process.exit(0);
+  } catch (error) {
+    console.error("Error occurred during transcription:", error);
+    throw error;
+  }
 }

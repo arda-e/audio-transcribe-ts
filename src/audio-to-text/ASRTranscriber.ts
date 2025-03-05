@@ -6,8 +6,8 @@ import {
 import { ITranscriber } from "../types";
 
 /**
- * The ASRTranscriber class provides automatic speech recognition (ASR) functionality
- * using the Xenova/whisper-tiny.en model.
+ * The ASRTranscriber class provides automatic speech recognition (ASR)
+ * functionality using the Xenova/whisper-tiny.en model.
  */
 export class ASRTranscriber implements ITranscriber {
   private static instance: ASRTranscriber | null = null;
@@ -70,13 +70,17 @@ export class ASRTranscriber implements ITranscriber {
     console.log("Transcribing audio data...");
 
     try {
-      const result: AutomaticSpeechRecognitionOutput | AutomaticSpeechRecognitionOutput[] =
+      const result:
+          AutomaticSpeechRecognitionOutput
+          | AutomaticSpeechRecognitionOutput[] =
           await this.speechRecognitionPipeline!(audioData, {
             chunk_length_s: this.chunkLength,
             stride_length_s: this.strideLength,
           });
 
-      const text = Array.isArray(result) ? result.map(r => r.text).join(" ") : result.text;
+      const text = Array.isArray(result)
+          ? result.map(r => r.text).join(" ")
+          : result.text;
       return { text };
     } catch (error) {
       console.error("Error during transcription:", error);

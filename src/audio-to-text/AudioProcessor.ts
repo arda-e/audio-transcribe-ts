@@ -1,18 +1,11 @@
-import { createReadStream, createWriteStream } from "fs";
-import { readFile } from "fs/promises";
-import ffmpeg from "fluent-ffmpeg";
-import { WaveFile } from "wavefile";
-import { IAudioProcessor } from "../types";
-/**
- * The `AudioProcessor` class now processes audio files using streaming.
- * - Uses streams for reading audio files
- * - Pipes data through FFmpeg without writing intermediate files
- * - Extracts audio samples as chunks arrive
- */
-export class AudioProcessor implements IAudioProcessor {
-  private static readonly TARGET_SAMPLE_RATE = 16000;
-  private static readonly TARGET_BIT_DEPTH = "32f";
-  private static readonly TARGET_CODEC = "pcm_f32le";
+import Piscina from "piscina";
+import path from "path";
+
+export class AudioProcessor {
+  private static readonly workerPool = new Piscina({
+    filename: path.resolve(__dirname, "audioWorker.js"), // Make sure this points to the correct file
+    maxThreads: 4, // Number of parallel threads
+  });
 
   private constructor(private readonly audioPath: string) {}
 
@@ -20,16 +13,29 @@ export class AudioProcessor implements IAudioProcessor {
     return new AudioProcessor(audioPath);
   }
 
-  /**
-   * Reads and processes an audio file using streaming.
-   * @returns A promise resolving to processed audio data as Float32Array.
-   */
   async readAudioFile(): Promise<Float32Array> {
-    console.log(`Processing audio file using streaming: ${this.audioPath}`);
+    console.log(`Processing audio file in parallel: ${this.audioPath}`);
 
     try {
-      const processedBuffer = await this.streamResampleAudio();
-      return this.extractSamples(processedBuffer);
+      const duration = 10; // Set actual duration dynamically
+      const numThreads = 4;
+      const segmentDuration = duration / numThreads;
+
+      /**
+       * Creates an array of promises that will process the audio file in parallel using the Piscina worker pool.
+       * Each promise will process a segment of the audio file with a duration of `segmentDuration` seconds.
+       * The start time of each segment is calculated based on the index of the thread.
+       */
+      const chunkPromises = Array.from({ length: numThreads }, (_, i) =>
+          AudioProcessor.workerPool.run({
+            audioPath: this.audioPath,
+            startTime: i * segmentDuration,
+            duration: segmentDuration,
+          })
+      );
+
+      const processedChunks = await Promise.all(chunkPromises);
+      return this.mergeChunks(processedChunks);
     } catch (error) {
       console.error(`Error processing audio file: ${error}`);
       throw new Error(`Failed to process audio file: ${this.audioPath}`);
@@ -37,58 +43,22 @@ export class AudioProcessor implements IAudioProcessor {
   }
 
   /**
-   * Streams audio data through FFmpeg for resampling and conversion.
-   * @returns A Promise resolving to a processed audio buffer.
+   * Merges an array of `Float32Array` chunks into a single `Float32Array`.
+   * This is a private helper method used within the `AudioProcessor` class.
+   *
+   * @param chunks - An array of `Float32Array` chunks to be merged.
+   * @returns A single `Float32Array` that contains the merged data from the input chunks.
    */
-  private async streamResampleAudio(): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const outputPath = this.audioPath.replace(".wav", "_processed.wav");
-      const readStream = createReadStream(this.audioPath);
-      const writeStream = createWriteStream(outputPath);
+  private mergeChunks(chunks: Float32Array[]): Float32Array {
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const merged = new Float32Array(totalLength);
 
-      ffmpeg()
-          .input(readStream)
-          .audioChannels(1) // Convert stereo to mono
-          .audioFrequency(AudioProcessor.TARGET_SAMPLE_RATE)
-          .audioCodec(AudioProcessor.TARGET_CODEC)
-          .format("wav")
-          .on("end", async () => {
-            console.log(`Streaming resampling complete: ${outputPath}`);
-            resolve(await readFile(outputPath));
-          })
-          .on("error", reject)
-          .pipe(writeStream);
-    });
-  }
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
 
-  /**
-   * Extracts audio samples from the processed buffer.
-   * @param buffer - The buffer containing processed WAV data.
-   * @returns A Float32Array containing extracted audio samples.
-   */
-  private extractSamples(buffer: Buffer): Float32Array {
-    const waveFile = new WaveFile(buffer);
-    waveFile.toBitDepth(AudioProcessor.TARGET_BIT_DEPTH);
-
-    const audioData = waveFile.getSamples();
-    return Array.isArray(audioData)
-        ? this.mergeChannels(audioData.map((channel) => new Float32Array(channel)))
-        : new Float32Array(audioData);
-  }
-
-  /**
-   * Merges multiple audio channels into a single channel by averaging the samples.
-   * @param channels - An array of Float32Arrays representing audio channels.
-   * @returns A new Float32Array containing the merged audio data.
-   */
-  private mergeChannels(channels: Float32Array[]): Float32Array {
-    if (channels.length === 1) return channels[0];
-
-    const length = channels[0].length;
-    const merged = new Float32Array(length);
-
-    return merged.map((_, i) =>
-        channels.reduce((sum, channel) => sum + channel[i], 0) / channels.length
-    );
+    return merged;
   }
 }
